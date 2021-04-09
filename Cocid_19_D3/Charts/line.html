@@ -1,0 +1,186 @@
+<!-- Code from d3-graph-gallery.com -->
+
+<meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="./d3.js"></script>
+
+<!-- Initialize a select button -->
+
+<div style="margin-left: 300px;" >
+  <input type="checkbox" class="checkbox" value="USA" checked style="width: 30px;height: 22px; margin-left: 10px;"><label style="font-size: 24px">USA</label>
+  <input type="checkbox" class="checkbox" value="Brazil" checked style="width: 30px;height: 22px; margin-left: 10px;"><label style="font-size: 24px">Brazil</label>
+  <input type="checkbox" class="checkbox" value="India" checked style="width: 30px;height: 22px; margin-left: 10px;"><label style="font-size: 24px">India</label>
+  <input type="checkbox" class="checkbox" value="Russia" checked style="width: 30px;height: 22px; margin-left: 10px;"><label style="font-size: 24px">Russia</label>
+  <input type="checkbox" class="checkbox" value="France" checked accesskey=""style="width: 22px;height: 25px; margin-left: 10px;"><label style="font-size: 24px">France</label>
+  
+
+
+</div>
+
+<!-- Load d3.js & color palette -->
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+<!-- Create a div where the graph will take place -->
+
+<div>
+
+</div>
+
+
+
+
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz">
+
+</div>
+
+<!-- Color Scale -->
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+
+<script>
+
+
+
+  // set the dimensions and margins of the graph
+  var margin = { top: 40, right: 100, bottom: 30, left: 100 },
+    width = 1060 - margin.left - margin.right,
+    height = 550 - margin.top - margin.bottom;
+
+  // append the svg object to the body of the page
+  var svg = d3.select("#my_dataviz")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform",
+      "translate(" + margin.left + "," + margin.top + ")");
+
+      // create a list of keys
+var keys = ["France", "Brazil", "USA", "Russia", "India"]
+
+// Usually you have a color scale in your chart already
+var color = d3.scaleOrdinal()
+  .domain(keys)
+  .range(d3.schemeSet1);
+
+// Add one dot in the legend for each name.
+svg.selectAll("mydots")
+  .data(keys)
+  .enter()
+  .append("circle")
+    .attr("cx", 50)
+    .attr("cy", function(d,i){ return 14 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+    .attr("r", 7)
+    .style("fill", function(d){ return color(d)})
+
+// Add one dot in the legend for each name.
+svg.selectAll("mylabels")
+  .data(keys)
+  .enter()
+  .append("text")
+    .attr("x", 90)
+    .attr("y", function(d,i){ return 20 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+    .style("fill", function(d){ return color(d)})
+    .text(function(d){ return d})
+    .attr("text-anchor", "left")
+    .style("alignment-baseline", "middle")
+
+
+  //Read the data
+  d3.csv("top5_con.csv", function (data) {
+
+    console.log(data)
+    var sumstat = d3.nest() // nest function allows to group the calculation per level of a factor
+      .key(function (d) { return d.Country; })
+      .entries(data);
+
+    // List of groups (here I have one group per column)
+    var allGroup = d3.map(data, function (d) { return (d.Country) }).keys()
+
+    var colors = ["#0575E6", "#E94057", "#fdbb2d", '#c25fed', '#87f573']
+    // A color scale: one color for each group
+    var myColor = d3.scaleOrdinal()
+      .domain(allGroup)
+      .range(colors);
+
+    // Add X axis --> it is a date format
+    var x = d3.scaleLinear()
+      .domain([1, 7])
+      .range([0, width]);
+    svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x).ticks(7))
+      .selectAll("text")
+      .style("font-size", 20);
+
+    // Add Y axis
+    var y = d3.scaleLinear()
+      .domain([0, d3.max(data, function (d) { return +d.Confirmed; })])
+      .range([height, 0]);
+    svg.append("g")
+      .call(d3.axisLeft(y))
+      .selectAll("text")
+      .style("font-size", 20);
+
+    // A function that update the chart
+    function update() {
+      let arr = []
+      d3.selectAll(".checkbox").each(function (d) {
+        let cb = d3.select(this);
+        if (cb.property("checked")) {
+          arr.push(cb.property("value"))
+        }
+      })
+
+      console.log(arr)
+      
+      let result = [];
+
+
+      sumstat.filter(function (d) {
+        for (let i = 0; i < arr.length; i++) {
+          if (d.key == arr[i]) {
+            result.push(d);
+          }
+        }
+      })
+
+      console.log(result)
+      var u = svg.selectAll(".line")
+        .data(result)
+
+      u
+        .enter()
+        .append("path")
+
+        .merge(u) // get the already existing elements as well
+
+        .attr("fill", "none")
+        .attr("stroke", function (d) { return myColor(d.values[0].Country) })
+        .attr("stroke-width", 4)
+        .attr("class", "line")
+        .attr("d", function (d) {
+          console.log(d)
+          return d3.line()
+            .x(function (d) { return x(d.Date); })
+            .y(function (d) { return y(d.Confirmed); })
+            (d.values)
+        })
+        .attr('opacity', 1)
+
+      u
+        .exit()
+        .remove();
+
+    }
+
+    d3.selectAll(".checkbox").on("change", update);
+    update();
+  })
+
+
+</script>
